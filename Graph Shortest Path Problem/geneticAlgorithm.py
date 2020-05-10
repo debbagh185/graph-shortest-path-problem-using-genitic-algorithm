@@ -14,12 +14,12 @@ from population import Population
 class GA :
    def __init__(self, graph):
       self.graph = graph
-      self.tauxMutation = 0.015
+      self.tauxMutation = 0.2
       self.tailleTournoi = 5
       self.elitisme = True
    
    def evoluerPopulation(self, pop):
-      nouvellePopulation = Population(self.graph, pop.taillePopulation(), False)
+      nouvellePopulation = Population(self.graph, False, pop.taillePopulation())
       elitismeOffset = 0
       if self.elitisme:
          nouvellePopulation.sauvegarderChemin(0, pop.getFittest())

@@ -8,6 +8,8 @@ Created on Thu May  7 12:18:28 2020
 
 import random
 import numpy as np
+import matplotlib.pyplot as plt
+import networkx as nx
 
 class Chemin:
    def __init__(self, graph, chemin=None):
@@ -38,27 +40,15 @@ class Chemin:
    def __setitem__(self, key, value):
      self.chemin[key] = value
      
+   def getIndex(self, value) :
+       return self.chemin.index(value)
+     
     
    def hasValideConnections(self):
-       newChemin = []
-       for chemin in self.chemin:
-            if chemin is not None: newChemin.append(chemin)
-       cheminWithoutNones = Chemin(self.graph, newChemin)
-       for i in range(0,len(newChemin)):
-           if i+1<len(newChemin) and (cheminWithoutNones.chemin[i] not in cheminWithoutNones.chemin[i+1].get_connections()):
+       for i in range(0,len(self.chemin)):
+           if i+1<len(self.chemin) and (self.chemin[i] not in self.chemin[i+1].get_connections()):
                self.valide = False
        return self.valide
-   
-   def genererIndividu(self):
-         self.setNoeud(0, self.graph.get_vertex(self.graph.sourceId))
-         i=1     
-         vertices = list(self.graph.get_vertices())
-         random.shuffle(vertices)
-         for v in vertices:
-             if v != self.graph.sourceId and v != self.graph.destId:
-                 self.setNoeud(i, self.graph.get_vertex(v))
-                 i=i+1
-         self.setNoeud(i, self.graph.get_vertex(self.graph.destId))
 
    def getNoeud(self, cheminPosition):
      return self.chemin[cheminPosition]
@@ -79,16 +69,19 @@ class Chemin:
 
    def getFitness(self):
      if self.fitness == 0:
-        self.fitness = 1/float(self.getCout())
+        self.fitness = 1/float(self.getCout()+1)
      return self.fitness
+ 
+   def removeNones(self):
+        newChemin = []
+        for chemin in self.chemin:
+            if chemin is not None: newChemin.append(chemin)
+        return Chemin(self.graph, newChemin)
 
    def getCout(self):
-     if(not self.hasValideConnections()):
+     cheminWithoutNones = self.removeNones()
+     if(not cheminWithoutNones.hasValideConnections()):
         return np.Infinity
-     newChemin = []
-     for chemin in self.chemin:
-         if chemin is not None: newChemin.append(chemin)
-     cheminWithoutNones = Chemin(self.graph, newChemin)
      if self.cout == 0:
         cheminCout = 0
         for indiceNoeud in range(0, cheminWithoutNones.tailleChemin()):
@@ -106,10 +99,23 @@ class Chemin:
 
    def contientNoeud(self, noeud):
      return noeud in self.chemin
+ 
+   def convert_to_tuples(self):
+       newChemin = []
+       for chemin in self.chemin:
+         if chemin is not None: newChemin.append(chemin)
+       cheminWithoutNones = Chemin(self.graph, newChemin)
+       tuples = []
+       for i in range(0,cheminWithoutNones.tailleChemin()) : 
+           if(i+1<=cheminWithoutNones.tailleChemin()-1):
+               t = (cheminWithoutNones.chemin[i].get_id(),cheminWithoutNones.chemin[i+1].get_id())
+               tuples.append(t)
+       return tuples
 
 class Vertex:
-    def __init__(self, node):
+    def __init__(self, node, pos):
         self.id = node
+        self.pos = pos
         self.adjacent = {}
 
     def __str__(self):
@@ -123,6 +129,9 @@ class Vertex:
 
     def get_id(self):
         return self.id
+    
+    def get_pos(self):
+        return self.pos
 
     def get_weight(self, neighbor):
         if neighbor is None:
@@ -141,31 +150,33 @@ class Graph:
     def __getitem__(self):
         return self.vert_dict
 
-    def add_vertex(self, node, position=None):
-        if position is not None : 
-            if position == 'src': 
+    def add_vertex(self,pos=(0,0),etat=None):
+        node = str(pos[0])+str(pos[1])
+        if etat is not None : 
+            if etat == 'src': 
                 self.sourceId = node
-            elif position == 'dest': 
+            elif etat == 'dest': 
                 self.destId = node
         self.num_vertices = self.num_vertices + 1
-        new_vertex = Vertex(node)
+        new_vertex = Vertex(node,pos)
         self.vert_dict[node] = new_vertex
         return new_vertex
-
+   
+   
     def get_vertex(self, n):
         if n in self.vert_dict:
             return self.vert_dict[n]
         else:
             return None
 
-    def add_edge(self, frm, to, cost = 0):
+    def add_edge(self, frm, toList):
         if frm not in self.vert_dict:
             self.add_vertex(frm)
-        if to not in self.vert_dict:
-            self.add_vertex(to)
-
-        self.vert_dict[frm].add_neighbor(self.vert_dict[to], cost)
-        self.vert_dict[to].add_neighbor(self.vert_dict[frm], cost)
+        for to in toList :
+            if to[0] not in self.vert_dict:
+                self.add_vertex(to[0])
+            self.vert_dict[frm].add_neighbor(self.vert_dict[to[0]], to[1])
+            self.vert_dict[to[0]].add_neighbor(self.vert_dict[frm], to[1])
 
     def get_vertices(self):
         return self.vert_dict.keys()
@@ -175,3 +186,31 @@ class Graph:
     def setNombreNoeuds(self, nombre):
         self.num_vertices = nombre
         
+    def drawGraph(self,shortestPath=None):
+        G = nx.DiGraph()
+        for n in self.get_vertices() : 
+            G.add_node(n, pos = self.get_vertex(n).get_pos())
+            
+        for v in self :
+            for w in v.get_connections():
+                G.add_edge(v.get_id(), w.get_id(), weight=v.get_weight(w))
+        plt.figure(figsize=(8,6))
+        pos=nx.get_node_attributes(G,'pos')
+        if(shortestPath is not None):
+            elseEdges=[(u,v) for (u,v,d) in G.edges(data=True) if (u,v) not in shortestPath]
+            nx.draw_networkx_nodes(G,pos)
+            nx.draw_networkx_edges(G,pos,edgelist=shortestPath, width=6, edge_color='r')
+            nx.draw_networkx_edges(G,pos,edgelist=elseEdges)
+            nx.draw_networkx_labels(G,pos)
+        else :
+            nx.draw_networkx(G,pos,with_labels=True)
+        
+        edge_labels =dict([((u, v), d['weight']) for u, v, d in G.edges(data=True)])
+        nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels)
+        
+        plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
+        plt.tick_params(axis='y', which='both', right=False, left=False, labelleft=False)
+        for pos in ['right','top','bottom','left']:
+            plt.gca().spines[pos].set_visible(False)
+        
+        plt.show()
