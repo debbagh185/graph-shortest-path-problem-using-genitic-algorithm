@@ -69,8 +69,19 @@ class Chemin:
 
    def getFitness(self):
      if self.fitness == 0:
-        self.fitness = 1/float(self.getCout()+1)
+        self.fitness = 1/float(self.getCout())
      return self.fitness
+ 
+   def genererIndividu(self):
+         self.setNoeud(0, self.graph.get_vertex(self.graph.sourceId))
+         i=1     
+         vertices = list(self.graph.get_vertices())
+         random.shuffle(vertices)
+         for v in vertices:
+             if v != self.graph.sourceId and v != self.graph.destId:
+                 self.setNoeud(i, self.graph.get_vertex(v))
+                 i=i+1
+         self.setNoeud(i, self.graph.get_vertex(self.graph.destId))
  
    def removeNones(self):
         newChemin = []
@@ -80,9 +91,7 @@ class Chemin:
 
    def getCout(self):
      cheminWithoutNones = self.removeNones()
-     if(not cheminWithoutNones.hasValideConnections()):
-        return np.Infinity
-     if self.cout == 0:
+     if self.cout == 0 :
         cheminCout = 0
         for indiceNoeud in range(0, cheminWithoutNones.tailleChemin()):
            noeudOrigine = cheminWithoutNones.getNoeud(indiceNoeud)
@@ -100,7 +109,7 @@ class Chemin:
    def contientNoeud(self, noeud):
      return noeud in self.chemin
  
-   def convert_to_tuples(self):
+   def convert_to_tuples(self) :
        newChemin = []
        for chemin in self.chemin:
          if chemin is not None: newChemin.append(chemin)
@@ -134,9 +143,11 @@ class Vertex:
         return self.pos
 
     def get_weight(self, neighbor):
-        if neighbor is None:
-            return 0
-        return self.adjacent[neighbor]
+         if neighbor is not None :
+            if neighbor in self.get_connections() :
+                return self.adjacent[neighbor]
+            return 1000
+         else : return 0
 
 
 class Graph:
