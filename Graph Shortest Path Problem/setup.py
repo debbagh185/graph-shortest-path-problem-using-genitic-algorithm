@@ -6,79 +6,69 @@ Created on Wed May  6 17:55:52 2020
 @author: Brahim DEBBAGH
 """
 
-from graph import Graph
-from population import Population
-from geneticAlgorithm import GA
-import numpy as np
-
+import graph as utils
 
 if __name__ == '__main__':
-    g = Graph()
+    
+    # On define les sommets de notre graphe
+    vertices = [
+        (1,1),(1,2),(1,3),(1,4),(1,5),
+        (2,1),(2,2),(2,3),(2,4),(2,5),
+        (3,1),(3,2),(3,3),(3,4),(3,5),
+        (4,1),(4,2),(4,3),(4,4),(4,5)
+        ]
+    
+    #on define les arcs de notre graph
+    edges = {
+     '11':[('12',7),('22',11)],
+     '12':[('13',7),('22',7)],
+     '13':[('14',7),('23',7)],
+     '14':[('15',7),('24',7),('25',7)],
+     '15':[('25',7)],
+     '21':[('22',7),('32',7)],
+     '22':[('32',7),('23',1)],
+     '23':[('14',2),('24',0.5),('33',7)],
+     '24':[('15',7),('25',7),('35',0.7),('34',7)],
+     '25':[('35',7)],
+     '31':[('22',0.001),('32',700),('42',2),('45',100)],
+     '32':[('33',7),('43',7),('42',7)],
+     '33':[('24',7),('34',7),('44',7),('43',7)],
+     '34':[('25',7),('35',7),('45',7),('44',7)],
+     '35':[('45',100)],
+     '41':[('42',7)],
+     '42':[('43',1)],
+     '43':[('34',7),('44',0.001)],
+     '44':[('34',7),('45',0.001)],
+     '45':[('45',0.3)]
+     }
+    
+    emptyGraph = utils.creerGraph()
+    
+    graphWithoutConnections = utils.add_vertices(emptyGraph,vertices,src='31',dest='45')
+    
+    g = utils.add_edges(graphWithoutConnections,edges)
+    
+    utils.drawGraph(g)
 
-    g.add_vertex(pos=(1,1))
-    g.add_vertex(pos=(1,2))
-    g.add_vertex(pos=(1,3))
-    g.add_vertex(pos=(1,4))
-    g.add_vertex(pos=(1,5))
-    
-    g.add_vertex(pos=(2,1))
-    g.add_vertex(pos=(2,2))
-    g.add_vertex(pos=(2,3))
-    g.add_vertex(pos=(2,4))
-    g.add_vertex(pos=(2,5))
-    
-    g.add_vertex(pos=(3,1),etat='src')
-    g.add_vertex(pos=(3,2))
-    g.add_vertex(pos=(3,3))
-    g.add_vertex(pos=(3,4))
-    g.add_vertex(pos=(3,5))
-    
-    g.add_vertex(pos=(4,1))
-    g.add_vertex(pos=(4,2))
-    g.add_vertex(pos=(4,3))
-    g.add_vertex(pos=(4,4))
-    g.add_vertex(pos=(4,5),etat='dest')
-    
-    g.add_edge('11', [('12',7),('22',11)])  
-    g.add_edge('12', [('13',7),('22',7)]) 
-    g.add_edge('13', [('14',7),('23',7)]) 
-    g.add_edge('14', [('15',7),('24',7),('25',7)]) 
-    g.add_edge('15', [('25',7)]) 
-    g.add_edge('21', [('22',7),('32',7)]) 
-    g.add_edge('22', [('32',7),('23',1)]) 
-    g.add_edge('23', [('14',2),('24',0.5),('33',7)]) 
-    g.add_edge('24', [('15',7),('25',7),('35',0.7),('34',7)]) 
-    g.add_edge('25', [('35',7)]) 
-    g.add_edge('31', [('22',0.001),('32',700),('42',2),('45',1554)]) 
-    g.add_edge('32', [('33',7),('43',7),('42',7)]) 
-    g.add_edge('33', [('24',7),('34',7),('44',7),('43',7)]) 
-    g.add_edge('34', [('25',7),('35',7),('45',7),('44',7)]) 
-    g.add_edge('35', [('45',100)]) 
-    g.add_edge('41', [('42',7)]) 
-    g.add_edge('42', [('43',1)]) 
-    g.add_edge('43', [('34',7),('44',0.001)]) 
-    g.add_edge('44', [('45',0.3)]) 
-    
-    
-    g.drawGraph()
-    
-    pop = Population(g,200, True)
+    pop = utils.creerPopulation(g, 200, True)
     
     print("Première génération : ")
-    pop.displayPop()
-    print("Chemin initiale : " + str(pop.getFittest()))
+    utils.displayPop(pop)
     
-    ga = GA(g)
+    ga = utils.GA()
+    
     
     for i in range(0, 100):
-        pop = ga.evoluerPopulation(pop)
+        pop = utils.evoluerPopulation(ga,g,pop)
         print("G-"+str(i+1))
-        pop.displayPop()
+        utils.displayPop(pop)
         
-    print("Chemin finale : " + str(pop.getFittest().getCout()))
+    print("Chemin finale : " + str(utils.getCout(g, utils.getFittest(g, pop))))
     
-    meilleurChemin = pop.getFittest()
-    if(meilleurChemin.removeNones().hasValideConnections()) : g.drawGraph(meilleurChemin.convert_to_tuples())
+    meilleurChemin = utils.removeNones(utils.getFittest(g, pop))
+    
+    #if(meilleurChemin.hasValideConnections()) : 
+    utils.drawGraph(g, utils.convert_to_tuples(g, meilleurChemin))
 
  
     
