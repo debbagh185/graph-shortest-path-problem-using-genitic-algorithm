@@ -17,8 +17,7 @@ if __name__ == '__main__':
         (3,1),(3,2),(3,3),(3,4),(3,5),
         (4,1),(4,2),(4,3),(4,4),(4,5)
         ]
-    
-    #on define les arcs de notre graph
+    # On define les arcs de notre graph
     edges = {
      '11':[('12',7),('22',11)],
      '12':[('13',7),('22',7)],
@@ -27,10 +26,10 @@ if __name__ == '__main__':
      '15':[('25',7)],
      '21':[('22',7),('32',7)],
      '22':[('32',7),('23',1)],
-     '23':[('14',2),('24',0.5),('33',7)],
-     '24':[('15',7),('25',7),('35',0.7),('34',7)],
+     '23':[('14',2),('24',0.5),('33',800)],
+     '24':[('15',7),('25',7),('35',0.7),('34',800)],
      '25':[('35',7)],
-     '31':[('22',0.001),('32',700),('42',2),('45',100)],
+     '31':[('22',1500),('32',700),('42',2),('45',100)],
      '32':[('33',7),('43',7),('42',7)],
      '33':[('24',7),('34',7),('44',7),('43',7)],
      '34':[('25',7),('35',7),('45',7),('44',7)],
@@ -42,7 +41,7 @@ if __name__ == '__main__':
      '45':[('45',0.3)]
      }
     
-    emptyGraph = utils.creerGraph()
+    emptyGraph = utils.creerGraph(0)
     
     graphWithoutConnections = utils.add_vertices(emptyGraph,vertices,src='31',dest='45')
     
@@ -52,22 +51,23 @@ if __name__ == '__main__':
 
     pop = utils.creerPopulation(g, 200, True)
     
+    distance_initial = utils.getCout(g, utils.getFittest(g, pop))
+    
     print("Première génération : ")
     utils.displayPop(pop)
     
     ga = utils.GA()
-    
-    
+
     for i in range(0, 100):
         pop = utils.evoluerPopulation(ga,g,pop)
         print("G-"+str(i+1))
         utils.displayPop(pop)
+        #utils.drawGraph(g, utils.convert_to_tuples(g, utils.removeNones(utils.getFittest(g, pop))))
         
-    print("Chemin finale : " + str(utils.getCout(g, utils.getFittest(g, pop))))
+    distance_final = utils.getCout(g, utils.getFittest(g, pop))
     
     meilleurChemin = utils.removeNones(utils.getFittest(g, pop))
     
-    #if(meilleurChemin.hasValideConnections()) : 
     utils.drawGraph(g, utils.convert_to_tuples(g, meilleurChemin))
 
  

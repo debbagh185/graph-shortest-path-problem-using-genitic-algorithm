@@ -10,7 +10,8 @@ import random
 import matplotlib.pyplot as plt
 import networkx as nx
 import copy
- 
+from functools import reduce
+
 class DictAttr(dict):
     def __getattr__(self, key):
         if key not in self:
@@ -25,90 +26,50 @@ class DictAttr(dict):
 
 
 def GA():
-   return DictAttr({'tauxMutation':0.015,'tailleTournoi':5,'elitisme':True})
+   return DictAttr({'tauxMutationRemove':0.1,'tauxMutationSwap':0.5 ,'tailleTournoi':5,'elitisme':True})
    
 def evoluerPopulation(ga,graph,pop):
-   nouvellePopulation = creerPopulation(graph, taillePopulation(pop), False)
-   elitismeOffset = 0
-   if ga.elitisme:
-      meilleurChemin = getFittest(graph, pop)
-      nouvellePopulation[0] =  meilleurChemin
-      elitismeOffset = 1
-   for i in range(elitismeOffset, taillePopulation(nouvellePopulation)):
-      parent1 = selectionTournoi(ga, graph, pop)
-      parent2 = selectionTournoi(ga, graph, pop)
-      enfant = crossover(graph, parent1, parent2)
-      nouvellePopulation[i] = enfant
-      
-   for i in range(elitismeOffset, taillePopulation(nouvellePopulation)):
-      nouvellePopulation[i] = muter(ga, nouvellePopulation,i)
-      
-   return nouvellePopulation
+   elitismeOffset = 1 if ga.elitisme else 0
+   return ([getFittest(graph, pop)] if ga.elitisme else [])+[muter(ga, crossover(graph, selectionTournoi(ga, graph, pop), selectionTournoi(ga, graph, pop))) for i in range(elitismeOffset, taillePopulation(pop))]
 
 
 def crossover(graph, parent1, parent2):
-   randomIndex = random.choice(range(1,tailleChemin(parent1)))
-   if parent1.data[randomIndex] in parent2.data :
-       firstChild = parent1.data[:randomIndex]+parent2.data[randomIndex:]
-       secondChild = parent2.data[:randomIndex]+parent1.data[randomIndex:]
-       randomChild = random.choice([firstChild,secondChild])
-       enfant = creerChemin(graph,randomChild)
-       return enfant
-   return parent1
+   randomIndex = random.choice(range(1,tailleChemin(parent1)))     
+   return creerChemin(graph,parent1.data[:randomIndex]+parent2.data[randomIndex:]) if parent1.data[randomIndex] in parent2.data else parent1
 
               
-def muter(ga, pop, cheminIndex) :
-   chemin = getChemin(pop, cheminIndex)
+def muter(ga,chemin) :
    for cheminPos1 in range(1, tailleChemin(chemin)-1):
       cheminPos2 = random.choice(range(1,tailleChemin(chemin)-1))
-      if random.random() < ga.tauxMutation :
-         return swap(chemin, cheminPos1, cheminPos2) if(random.choice([True,False])) else removeNoeud(chemin, cheminPos2) 
+      if random.random() < ga.tauxMutationRemove :
+         return removeNoeud(chemin, cheminPos2) 
+      elif random.random() < ga.tauxMutationSwap:
+         return swap(chemin, cheminPos1, cheminPos2)
    return chemin
 
+
 def selectionTournoi(ga, graph, pop):
-   tournoi = creerPopulation(graph, ga.tailleTournoi, False)
-   for i in range(0, ga.tailleTournoi):
-      randomId = int(random.random()*taillePopulation(pop))
-      tournoi[i] = getChemin(pop, randomId)
-   fittest = getFittest(graph, tournoi)
-   return fittest
+   return getFittest(graph, [getChemin(pop, int(random.random()*taillePopulation(pop))) for i in range(0, ga.tailleTournoi)])
        
 def creerPopulation(graph, taillePopulation, init):  
-    if init : 
-        return [genererIndividu(graph) for i in range(0, taillePopulation)]
-    return [None]*taillePopulation
+    return [genererIndividu(graph) for i in range(0, taillePopulation)] if init else [None]*taillePopulation 
 
 def cheminToString(chemin) : 
     return list([vertex.id for vertex in chemin.data])
-  
-def displayPop(pop):
-    for chemin in pop:
-        print(cheminToString(removeNones(chemin)))
    
 def getChemin(pop, index):
     return pop[index]
    
 def getFittest(graph, pop):
-      fittest = pop[0]
-      for i in range(0, taillePopulation(pop)):
-         if getFitness(graph, fittest) <= getFitness(graph, getChemin(pop,i)) :
-            fittest = getChemin(pop,i)
-      return fittest
+      return reduce(lambda smallest, current : smallest if ( getFitness(graph, smallest) > getFitness(graph, current) ) else current, pop)
   
-    
-def getSmallChemin(pop):
-      small = pop[0]
-      for i in range(0, taillePopulation(pop)):
-         if tailleChemin(small) >= tailleChemin(getChemin(pop,i)) :
-            small = getChemin(pop,i)
-      return small
    
 def taillePopulation(pop):
       return len(pop)
 
 def creerChemin(graph,data=None):
     return DictAttr({
-        'data':data if data!=None else nombreNoeuds(graph)*[None],
+         'data':data if data!=None else nombreNoeuds(graph)*[None],
          'fitness':0,
          'cout':0,
          'valide':True
@@ -116,13 +77,6 @@ def creerChemin(graph,data=None):
       
 def getIndex(chemin, value) :
        return chemin.data.index(value)
-     
-def hasValideConnections(chemin):
-       newChemin = copy.deepcopy(chemin)
-       for i in range(0,len(newChemin.data)):
-           if i+1<len(newChemin.data) and (newChemin.data[i] not in get_connections(newChemin.data[i+1].id)):
-               newChemin.valide = False
-       return newChemin.valide
 
 def getNoeud(chemin, cheminPosition):
      return chemin.data[cheminPosition]
@@ -138,6 +92,11 @@ def removeNoeud(chemin, cheminPosition):
      newChemin = copy.deepcopy(chemin)
      newChemin.data[cheminPosition] = None
      return newChemin
+
+def insertNoeud(chemin, cheminPosition):
+     newChemin = copy.deepcopy(chemin)
+     newChemin.data[cheminPosition] = None
+     return newChemin
          
 def swap(chemin,cheminPos1, cheminPos2):
     newChemin = copy.deepcopy(chemin)     
@@ -146,12 +105,11 @@ def swap(chemin,cheminPos1, cheminPos2):
     return newChemin
 
 def getFitness(graph, chemin):
-    if chemin.fitness == 0:
-        chemin.fitness = 1/float(getCout(graph,chemin)+1)
-    return chemin.fitness
+    return 1/float(getCout(graph,chemin)+1) if chemin.fitness == 0 else chemin.fitness
  
 def genererIndividu(graph):
-    chemin = creerChemin(graph)
+    
+    """chemin = creerChemin(graph)
     chemin = setNoeud(chemin, 0, get_vertex(graph, graph.sourceId))
     i=1     
     vertices = list(get_vertices(graph))
@@ -161,15 +119,18 @@ def genererIndividu(graph):
             chemin = setNoeud(chemin, i, get_vertex(graph,v))
             i=i+1
     chemin = setNoeud(chemin, i, get_vertex(graph, graph.destId))
-    return chemin
+    return chemin"""
+
+    return creerChemin(graph, [get_vertex(graph, graph.sourceId)]+[get_vertex(graph,v) for v in list(get_vertices(graph)) if v != graph.sourceId and v != graph.destId]+[get_vertex(graph, graph.destId)])
  
 def removeNones(chemin):
      newChemin = copy.deepcopy(chemin)
-     newData = list(filter(lambda x: x is not None, newChemin.data))
-     newChemin.data = newData
+     newChemin.data = list(filter(lambda x: x is not None, newChemin.data))
      return newChemin
 
 def getCout(graph, chemin):
+    
+    """
     cheminWithoutNones = removeNones(chemin)
     if chemin.cout == 0 :
         cheminCout = 0
@@ -178,9 +139,13 @@ def getCout(graph, chemin):
               noeudArrivee = None
               if indiceNoeud+1 < tailleChemin(cheminWithoutNones):
                  noeudArrivee = getNoeud(cheminWithoutNones,indiceNoeud+1).id 
-              cheminCout += get_weight(graph, noeudOrigine,noeudArrivee)
+              cheminCout += get_weight(graph, (noeudOrigine,noeudArrivee))
         chemin.cout = cheminCout
-    return chemin.cout
+    return chemin.cout"""
+
+    cheminWithoutNones = removeNones(chemin)
+    listOfTuples = [(getNoeud(cheminWithoutNones,indiceNoeud).id, getNoeud(cheminWithoutNones,indiceNoeud+1).id) if indiceNoeud+1 < tailleChemin(cheminWithoutNones) else (getNoeud(cheminWithoutNones,indiceNoeud).id, None) for indiceNoeud in range(0, tailleChemin(cheminWithoutNones))]
+    return sum(get_weight(graph, tupleX) for tupleX in listOfTuples)
 
 def tailleChemin(chemin):
    return len(chemin.data)
@@ -189,7 +154,8 @@ def contientNoeud(chemin, noeud):
    return noeud in chemin.data
  
 def convert_to_tuples(graph, chemin) :
-   newChemin = []
+    
+   """newChemin = []
    for vertex in chemin.data:
       if vertex is not None: newChemin.append(vertex)
    cheminWithoutNones = creerChemin(graph, newChemin)
@@ -198,44 +164,37 @@ def convert_to_tuples(graph, chemin) :
       if(i+1<=tailleChemin(cheminWithoutNones)-1):
           t = (cheminWithoutNones.data[i].id,cheminWithoutNones.data[i+1].id)
           tuples.append(t)
-   return tuples
+   return tuples"""
+
+   cheminWithoutNones = removeNones(chemin)
+   return [(cheminWithoutNones.data[i].id,cheminWithoutNones.data[i+1].id) for i in range(0,tailleChemin(cheminWithoutNones)) if(i+1<=tailleChemin(cheminWithoutNones)-1)]
 
 
 def add_neighbor(graph,origin, neighbor, weight=0):
     graph.vert_dict[origin].adjacent[neighbor] = weight 
 
-def creerGraph() :
-    return DictAttr({'num_vertices':0, 'vert_dict':{},'sourceId':None, 'destId':None})
+def creerGraph(num_vertices) :
+    return DictAttr({'num_vertices':num_vertices, 'vert_dict':{},'sourceId':None, 'destId':None})
 
 def add_vertices(graph, vertices, src, dest):
-    newGraph = DictAttr(copy.deepcopy(graph))
-    newGraph.sourceId = src
-    newGraph.destId = dest
-    for pos in vertices :
-        node = str(pos[0])+str(pos[1])
-        new_vertex = creerVertex(node,pos)
-        newGraph.vert_dict[node] = new_vertex
-        newGraph.num_vertices = newGraph.num_vertices+1
-    return newGraph
+    return {
+            'sourceId' : src,
+            'destId' : dest,
+            'num_vertices': len(vertices),
+            'vert_dict' : {str(pos[0])+str(pos[1]):creerVertex(pos) for pos in vertices}
+    }
    
-def creerVertex(node, pos):
-   return DictAttr({'id':node,'pos':pos,'adjacent':{}})
+def creerVertex(pos):
+   return DictAttr({'id':str(pos[0])+str(pos[1]),'pos':pos,'adjacent':{}})
    
 def get_vertex(graph, n):
-    if n in graph.vert_dict:
-        return graph.vert_dict[n]
-    else:
-        return None
+    return graph.vert_dict[n] if n in graph.vert_dict else None
 
 def get_id(vertex):
     return vertex.id
 
-def get_weight(graph, origin, neighbor):
-    if neighbor is not None :
-        if neighbor in get_connections(graph,origin) :
-            return get_adjacent(graph, origin, neighbor)
-        return 1000
-    return 0
+def get_weight(graph, tupleX):
+    return get_adjacent(graph, tupleX[0], tupleX[1]) if tupleX[1] in get_connections(graph,tupleX[0]) else 1000 if tupleX[1] is not None else 0
 
 def get_connections(graph,vertex):
     return graph.vert_dict[vertex].adjacent.keys()
@@ -248,23 +207,18 @@ def get_pos(vertex):
 
 def add_edges(graph,edges):
     newGraph = DictAttr(copy.deepcopy(graph))
-    for frm,toList in edges.items() :
+    for frm, toList in edges.items() :
         for to in toList :
             newGraph.vert_dict[frm].adjacent[newGraph.vert_dict[to[0]].id] = to[1]
             newGraph.vert_dict[to[0]].adjacent[newGraph.vert_dict[frm].id] = to[1]
     return newGraph
 
 def setSource(graph,source) : 
-    newGraph = DictAttr(graph)
-    newGraph.sourceId = source
-    return newGraph
+    return copy.deepcopy(graph).update({"sourceId" : source})
 
 def setDestination(graph,dest) : 
-    newGraph = DictAttr(graph)
-    newGraph.destId = dest
-    return newGraph
+    return copy.deepcopy(graph).update({"destId" : dest})
        
-    
 def get_vertices(graph):
     return graph.vert_dict.keys()
     
@@ -272,10 +226,11 @@ def nombreNoeuds(graph):
     return graph.num_vertices
     
 def changeNombreNoeuds(graph, nombre):
-    newGraph = DictAttr(graph)
-    newGraph.num_vertices = nombre
-    return newGraph
+    return copy.deepcopy(graph).update({"num_vertices" : nombre})
         
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
 def drawGraph(graph,shortestPath=None):
     G = nx.DiGraph()
     for n in get_vertices(graph) : 
@@ -283,7 +238,7 @@ def drawGraph(graph,shortestPath=None):
             
     for v in graph.vert_dict :
         for w in get_connections(graph,v):
-            G.add_edge(v, w, weight=get_weight(graph,v,w))
+            G.add_edge(v, w, weight=get_weight(graph,(v,w)))
     plt.figure(figsize=(8,6))
     pos=nx.get_node_attributes(G,'pos')
     if(shortestPath is not None):
@@ -304,3 +259,7 @@ def drawGraph(graph,shortestPath=None):
         plt.gca().spines[pos].set_visible(False)
         
     plt.show()
+
+def displayPop(pop):
+    for chemin in pop:
+        print(cheminToString(removeNones(chemin)))
