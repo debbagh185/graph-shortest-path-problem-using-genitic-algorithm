@@ -1,1 +1,1 @@
-# Graph-Shortest-Path-Problem-Using-Genitic-Algorithm
+# Solving Graph Shortest Path Problem Using Genitic Algorithm
